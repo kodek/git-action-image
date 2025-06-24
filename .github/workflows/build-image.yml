@@ -52,7 +52,7 @@ jobs:
           echo "Building Docker image..."
           nix build .#docker
           echo "Loading image into Docker..."
-          ./result | docker image load
+          docker load < result
 
       - name: Tag image
         if: github.event_name != 'pull_request'
