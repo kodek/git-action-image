@@ -58,7 +58,7 @@ jobs:
         if: github.event_name != 'pull_request'
         run: |
           # Get the image name from the loaded image
-          IMAGE_ID=$(docker images --format "table {{.Repository}}:{{.Tag}}" | grep gitea-actions-base | head -1)
+          IMAGE_ID=$(docker images --format "table {{.Repository}}:{{.Tag}}" | grep git-actions-base | head -1)
           echo "Found image: $IMAGE_ID"
           
           # Tag with all metadata tags
