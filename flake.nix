@@ -1,16 +1,20 @@
 {
-  description = "Gitea Actions Base Image - Comprehensive toolset for all project types";
+  description = "Git Actions Base Image - Comprehensive toolset for all project types";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
   };
 
-  outputs = { self, nixpkgs, flake-utils }:
-    flake-utils.lib.eachDefaultSystem (system:
-      let
+  outputs = {
+    self,
+    nixpkgs,
+    flake-utils,
+  }:
+    flake-utils.lib.eachDefaultSystem (
+      system: let
         pkgs = nixpkgs.legacyPackages.${system};
-        
+
         # Programming Languages & Runtimes
         python = pkgs.python313;
         nodejs = pkgs.nodejs_24;
@@ -19,21 +23,20 @@
 
         # Core system utilities
         systemUtils = with pkgs; [
-          curl
-          wget
-          unzip
-          tar
-          gzip
-          bash
-          zsh
-          git
+          # curl
+          # wget
+          # unzip
+          # tar
+          # gzip
+          # bash
+          # zsh
+          # git
         ];
 
         # Package managers
         packageManagers = with pkgs; [
-          uv           # Python package manager
-          yarn         # Node.js package manager
-          npm          # Node.js package manager (comes with nodejs)
+          uv # Python package manager
+          yarn # Node.js package manager
         ];
 
         # Container & Orchestration Tools
@@ -43,12 +46,12 @@
           kubectl
           kubernetes-helm
           kustomize
-          fluxcd       # GitOps continuous delivery
+          fluxcd # GitOps continuous delivery
         ];
 
         # Build & Task Management
         buildTools = with pkgs; [
-          go-task      # Modern task runner
+          go-task # Modern task runner
         ];
 
         # Code Quality & Linting - Python
@@ -64,7 +67,7 @@
           treefmt
           nodePackages.eslint
           golangci-lint
-          alejandra    # Nix formatter
+          alejandra # Nix formatter
         ];
 
         # Security & Secrets Management
@@ -77,7 +80,7 @@
         devTools = with pkgs; [
           devenv
           direnv
-          gh           # GitHub CLI
+          gh # GitHub CLI
         ];
 
         # Data Processing & Utilities
@@ -88,57 +91,45 @@
         ];
 
         # All tools combined
-        allTools = systemUtils ++ packageManagers ++ containerTools ++ 
-                  buildTools ++ pythonLinting ++ lintingTools ++ 
-                  securityTools ++ devTools ++ dataTools ++ [
-          python
-          nodejs
-          go
-          cue
-        ];
-
-        # Create a shell environment for development
-        devShell = pkgs.mkShell {
-          buildInputs = allTools;
-          shellHook = ''
-            echo "Gitea Actions Base Image Development Environment"
-            echo "Available tools:"
-            echo "  Languages: python (${python.version}), node (${nodejs.version}), go (${go.version})"
-            echo "  Package managers: uv, npm, yarn"
-            echo "  Container tools: docker, kubectl, helm, kustomize, flux"
-            echo "  Linting: ruff, basedpyright, eslint, golangci-lint"
-            echo "  Security: sops, age"
-            echo "  Utilities: jq, yq, rg, gh, task"
-          '';
-        };
+        allTools =
+          systemUtils
+          ++ packageManagers
+          ++ containerTools
+          ++ buildTools
+          ++ pythonLinting
+          ++ lintingTools
+          ++ securityTools
+          ++ devTools
+          ++ dataTools
+          ++ [
+            python
+            nodejs
+            go
+            cue
+          ];
 
         # Docker image using Nix
         dockerImage = pkgs.dockerTools.buildLayeredImage {
-          name = "gitea-actions-base";
+          name = "git-actions-base";
           tag = "latest";
-          
+
           contents = allTools;
-          
+
           config = {
             Env = [
               "PATH=/bin"
               "PYTHONPATH=${python}/lib/python3.13/site-packages"
               "NODE_PATH=${nodejs}/lib/node_modules"
             ];
-            
+
             WorkingDir = "/workspace";
-            
-            Cmd = [ "${pkgs.bash}/bin/bash" ];
+
+            Cmd = ["${pkgs.bash}/bin/bash"];
           };
-          
+
           maxLayers = 100; # Optimize for layer caching
         };
-
-      in
-      {
-        # Development shell
-        devShells.default = devShell;
-
+      in {
         # Docker image output
         packages = {
           default = dockerImage;
@@ -155,7 +146,7 @@
               nix build .#docker
               docker load < result
               echo "Docker image loaded successfully!"
-              echo "Run with: docker run -it gitea-actions-base:latest"
+              echo "Run with: docker run -it git-actions-base:latest"
             '');
           };
         };

@@ -1,0 +1,83 @@
+name: Build and Publish Docker Image
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@main
+
+      - name: Setup Nix cache
+        uses: DeterminateSystems/magic-nix-cache-action@main
+
+      - name: Log in to Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build Docker image with Nix
+        run: |
+          echo "Building Docker image..."
+          nix build .#docker
+          echo "Loading image into Docker..."
+          ./result | docker image load
+
+      - name: Tag image
+        if: github.event_name != 'pull_request'
+        run: |
+          # Get the image name from the loaded image
+          IMAGE_ID=$(docker images --format "table {{.Repository}}:{{.Tag}}" | grep gitea-actions-base | head -1)
+          echo "Found image: $IMAGE_ID"
+          
+          # Tag with all metadata tags
+          while IFS= read -r tag; do
+            echo "Tagging as: $tag"
+            docker tag "$IMAGE_ID" "$tag"
+          done <<< "${{ steps.meta.outputs.tags }}"
+
+      - name: Push image
+        if: github.event_name != 'pull_request'
+        run: |
+          # Push all tags
+          while IFS= read -r tag; do
+            echo "Pushing: $tag"
+            docker push "$tag"
+          done <<< "${{ steps.meta.outputs.tags }}"
+
+      - name: Output image digest
+        if: github.event_name != 'pull_request'
+        run: |
+          echo "Image digest: ${{ steps.meta.outputs.digest }}"
+          echo "Image tags: ${{ steps.meta.outputs.tags }}"
