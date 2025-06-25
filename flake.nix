@@ -121,15 +121,12 @@
           name = "git-actions-base";
           tag = "latest";
 
-          # Essential system setup for better compatibility
-          copyToRoot = with pkgs.dockerTools; [
+          contents = allTools ++ (with pkgs.dockerTools; [
             usrBinEnv        # Provides /usr/bin/env
             binSh            # Provides /bin/sh
             caCertificates   # SSL certificates
             fakeNss          # /etc/passwd and /etc/group
-          ];
-
-          contents = allTools;
+          ]);
 
           config = {
             Env = [
