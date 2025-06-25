@@ -21,16 +21,27 @@
         go = pkgs.go_1_24;
         cue = pkgs.cue;
 
-        # Core system utilities
+        # Core system utilities - use meta-packages and environment setup
         systemUtils = with pkgs; [
-          # curl
-          # wget
-          # unzip
-          # tar
-          # gzip
-          # bash
-          # zsh
-          # git
+          # Essential system packages
+          coreutils     # ls, cat, cp, mv, mkdir, etc.
+          util-linux    # mount, umount, lsblk, etc.
+          findutils     # find, xargs
+          gnugrep       # grep
+          gnused        # sed
+          gawk          # awk
+          
+          # Network and compression
+          curl
+          wget
+          unzip
+          gnutar
+          gzip
+          
+          # Shells and version control
+          bash
+          zsh
+          git
         ];
 
         # Package managers
@@ -58,12 +69,10 @@
         pythonLinting = with pkgs; [
           ruff
           basedpyright
-          black
         ];
 
         # Code Quality & Linting - Multi-language
         lintingTools = with pkgs; [
-          pre-commit
           treefmt
           nodePackages.eslint
           golangci-lint
@@ -78,7 +87,6 @@
 
         # Development Environment Tools
         devTools = with pkgs; [
-          devenv
           direnv
           gh # GitHub CLI
         ];
@@ -108,16 +116,25 @@
             cue
           ];
 
-        # Docker image using Nix
+        # Docker image using Nix best practices
         dockerImage = pkgs.dockerTools.buildLayeredImage {
           name = "git-actions-base";
           tag = "latest";
+
+          # Essential system setup for better compatibility
+          copyToRoot = with pkgs.dockerTools; [
+            usrBinEnv        # Provides /usr/bin/env
+            binSh            # Provides /bin/sh
+            caCertificates   # SSL certificates
+            fakeNss          # /etc/passwd and /etc/group
+          ];
 
           contents = allTools;
 
           config = {
             Env = [
-              "PATH=/bin"
+              # Properly construct PATH from all included packages
+              "PATH=${pkgs.lib.makeBinPath allTools}"
               "PYTHONPATH=${python}/lib/python3.13/site-packages"
               "NODE_PATH=${nodejs}/lib/node_modules"
             ];
