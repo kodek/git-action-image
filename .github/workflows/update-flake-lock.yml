@@ -1,0 +1,157 @@
+name: Update flake.lock weekly
+
+on:
+  schedule:
+    # Run every Sunday at 2 AM UTC
+    - cron: '0 2 * * 0'
+  workflow_dispatch: # Allow manual trigger
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update-flake-lock:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v27
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Nix cache
+        uses: cachix/cachix-action@v15
+        with:
+          name: nix-community
+
+      - name: Create update branch
+        run: |
+          BRANCH_NAME="update-flake-lock-$(date +%Y%m%d-%H%M%S)"
+          echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH_NAME"
+
+      - name: Capture current flake.lock
+        run: |
+          cp flake.lock flake.lock.before
+
+      - name: Update flake.lock
+        run: |
+          nix flake update
+
+      - name: Check for changes
+        id: check_changes
+        run: |
+          if ! diff -q flake.lock.before flake.lock > /dev/null; then
+            echo "changes=true" >> $GITHUB_OUTPUT
+          else
+            echo "changes=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Generate nix diff
+        if: steps.check_changes.outputs.changes == 'true'
+        run: |
+          echo "# Nix Flake Update Report" > nix-diff-report.md
+          echo "" >> nix-diff-report.md
+          echo "## Updated Dependencies" >> nix-diff-report.md
+          echo "" >> nix-diff-report.md
+          
+          # Show which packages were updated
+          echo '```' >> nix-diff-report.md
+          echo "Flake inputs updated:" >> nix-diff-report.md
+          git diff --no-index flake.lock.before flake.lock | grep -E '^\+.*"rev":|^\-.*"rev":' | head -20 >> nix-diff-report.md || true
+          echo '```' >> nix-diff-report.md
+          echo "" >> nix-diff-report.md
+          
+          # Try to show version changes for key packages if possible
+          echo "## Key Package Version Changes" >> nix-diff-report.md
+          echo "" >> nix-diff-report.md
+          echo "The following shows potential version changes for key packages:" >> nix-diff-report.md
+          echo "" >> nix-diff-report.md
+          echo '```' >> nix-diff-report.md
+          
+          # Check for Go version changes
+          OLD_GO=$(nix eval --file flake.lock.before --apply 'f: f.nodes.nixpkgs.locked.rev' 2>/dev/null | cut -c 2-8 || echo "unknown")
+          NEW_GO=$(nix eval .#go.version 2>/dev/null || echo "Go version info not available")
+          echo "Go version: $NEW_GO" >> nix-diff-report.md
+          
+          # Check for Node.js version changes  
+          NEW_NODE=$(nix eval .#nodejs.version 2>/dev/null || echo "Node.js version info not available")
+          echo "Node.js version: $NEW_NODE" >> nix-diff-report.md
+          
+          # Check for Python version changes
+          NEW_PYTHON=$(nix eval .#python.version 2>/dev/null || echo "Python version info not available") 
+          echo "Python version: $NEW_PYTHON" >> nix-diff-report.md
+          
+          echo '```' >> nix-diff-report.md
+          echo "" >> nix-diff-report.md
+          echo "For complete changes, see the flake.lock diff in this PR." >> nix-diff-report.md
+
+      - name: Build Docker image to validate
+        if: steps.check_changes.outputs.changes == 'true'
+        run: |
+          echo "Building Docker image to validate flake.lock update..."
+          timeout 20m nix build .#docker
+          if [ $? -eq 0 ]; then
+            echo "✅ Docker image built successfully!"
+            echo "build_success=true" >> $GITHUB_ENV
+          else
+            echo "❌ Docker image build failed!"
+            echo "build_success=false" >> $GITHUB_ENV
+            exit 1
+          fi
+
+      - name: Commit changes
+        if: steps.check_changes.outputs.changes == 'true' && env.build_success == 'true'
+        run: |
+          git add flake.lock
+          git commit -m "chore: update flake.lock
+
+Weekly automatic update of flake.lock to latest package versions.
+
+All dependencies have been updated and the Docker image builds successfully."
+
+      - name: Push branch
+        if: steps.check_changes.outputs.changes == 'true' && env.build_success == 'true'
+        run: |
+          git push origin "$BRANCH_NAME"
+
+      - name: Create Pull Request
+        if: steps.check_changes.outputs.changes == 'true' && env.build_success == 'true'
+        id: create_pr
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ env.BRANCH_NAME }}
+          title: "chore: weekly flake.lock update"
+          body: |
+            ## Weekly Flake Lock Update 🔄
+            
+            This is an automated weekly update of `flake.lock` to fetch the latest package versions.
+            
+            ### ✅ Validation Status
+            - Docker image builds successfully
+            - All dependencies updated to latest compatible versions
+            
+            ### 📊 Changes Summary
+            $(cat nix-diff-report.md)
+            
+            ### 🚀 Ready to Merge
+            This PR has been automatically validated and is ready for merge. If you notice any issues, please review the changes manually.
+            
+            ---
+            🤖 Automated by GitHub Actions
+          delete-branch: true
+
+
+      - name: No changes summary
+        if: steps.check_changes.outputs.changes == 'false'
+        run: |
+          echo "No updates available for flake.lock. All dependencies are already at latest compatible versions."
