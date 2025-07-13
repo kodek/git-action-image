@@ -150,13 +150,6 @@ All dependencies have been updated and the Docker image builds successfully."
             🤖 Automated by GitHub Actions
           delete-branch: true
 
-      - name: Auto-merge PR
-        if: steps.check_changes.outputs.changes == 'true' && env.build_success == 'true' && steps.create_pr.outputs.pull-request-number
-        uses: peter-evans/enable-pull-request-automerge@v3
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          pull-request-number: ${{ steps.create_pr.outputs.pull-request-number }}
-          merge-method: merge
 
       - name: No changes summary
         if: steps.check_changes.outputs.changes == 'false'
