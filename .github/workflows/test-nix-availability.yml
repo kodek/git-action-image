@@ -1,4 +1,4 @@
-name: Test Nix Availability
+name: Test Nix Availability in Docker Image
 
 "on":
   push:
@@ -8,9 +8,9 @@ name: Test Nix Availability
   workflow_dispatch:
 
 jobs:
-  test-nix:
+  test-nix-in-image:
     runs-on: ubuntu-latest
-    name: Test Nix Tool Availability and Flakes Support
+    name: Build Docker Image and Test Nix Availability
     
     steps:
       - name: Checkout repository
@@ -25,30 +25,39 @@ jobs:
       - name: Setup Nix cache
         uses: DeterminateSystems/magic-nix-cache-action@main
 
-      - name: Verify Nix installation
+      - name: Build Docker image
         run: |
-          echo "Testing basic Nix availability..."
-          nix --version
-          echo "✅ Nix command is available"
-
-      - name: Test Nix flakes functionality
-        run: |
-          echo "Testing Nix flakes support with cowsay..."
-          nix run nixpkgs#cowsay -- "Nix flakes are working! 🐄"
-          echo "✅ Nix flakes functionality verified"
-
-      - name: Test project flake evaluation
-        run: |
-          echo "Testing project flake evaluation..."
-          nix flake show
-          echo "✅ Project flake can be evaluated"
-
-      - name: Test Docker image build capability
-        run: |
-          echo "Testing Docker image build (quick validation)..."
+          echo "Building Docker image with Nix..."
           nix build .#docker --print-build-logs
-          echo "✅ Docker image builds successfully"
+          echo "✅ Docker image built successfully"
+
+      - name: Load Docker image
+        run: |
+          echo "Loading Docker image..."
+          docker load < result
+          echo "✅ Docker image loaded"
           
-          # Verify the image was created
-          ls -la result
-          file result
+          # List available images to confirm
+          docker images | grep git-actions-base
+
+      - name: Test Nix availability in container
+        run: |
+          echo "Testing if Nix is available inside the container..."
+          if docker run --rm git-actions-base:latest nix --version; then
+            echo "✅ Nix command is available in the container"
+          else
+            echo "❌ Nix command is NOT available in the container"
+            echo "Available commands in container:"
+            docker run --rm git-actions-base:latest ls /nix/store/ 2>/dev/null | head -10 || echo "No /nix/store found"
+            exit 1
+          fi
+
+      - name: Test Nix flakes functionality in container
+        run: |
+          echo "Testing Nix flakes support inside the container..."
+          if docker run --rm git-actions-base:latest nix run nixpkgs#cowsay -- "Nix flakes are working in container! 🐄"; then
+            echo "✅ Nix flakes functionality verified in container"
+          else
+            echo "❌ Nix flakes functionality failed in container"
+            exit 1
+          fi
