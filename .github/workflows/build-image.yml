@@ -12,11 +12,14 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  build-and-push:
+  build:
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
+    outputs:
+      image-name: ${{ steps.image-info.outputs.name }}
+      image-tag: ${{ steps.image-info.outputs.tag }}
 
     steps:
       - name: Checkout repository
@@ -27,14 +30,6 @@ jobs:
 
       - name: Setup Nix cache
         uses: DeterminateSystems/magic-nix-cache-action@main
-
-      - name: Log in to Container Registry
-        if: github.event_name != 'pull_request'
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Extract metadata
         id: meta
@@ -50,26 +45,56 @@ jobs:
       - name: Build Docker image with Nix
         run: |
           echo "Building Docker image..."
-          nix build .#docker
+          nix build .#docker --print-build-logs
+          echo "✅ Docker image built successfully"
+
+      - name: Load and save Docker image
+        id: image-info
+        run: |
           echo "Loading image into Docker..."
           docker load < result
-
-      - name: Tag image
-        if: github.event_name != 'pull_request'
-        run: |
-          # Get the image name from the loaded image
+          
+          # Get the image name and tag
           IMAGE_ID=$(docker images --format "table {{.Repository}}:{{.Tag}}" | grep git-actions-base | head -1)
           echo "Found image: $IMAGE_ID"
+          
+          # Extract name and tag
+          IMAGE_NAME=$(echo "$IMAGE_ID" | cut -d':' -f1)
+          IMAGE_TAG=$(echo "$IMAGE_ID" | cut -d':' -f2)
+          
+          echo "name=$IMAGE_NAME" >> $GITHUB_OUTPUT
+          echo "tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
+          
+          # Save image as tar file for verification job
+          echo "Saving image for verification..."
+          docker save "$IMAGE_ID" -o docker-image.tar
+
+      - name: Upload Docker image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-image
+          path: docker-image.tar
+          retention-days: 1
+
+      - name: Log in to Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Tag and push image
+        if: github.event_name != 'pull_request'
+        run: |
+          IMAGE_ID="${{ steps.image-info.outputs.name }}:${{ steps.image-info.outputs.tag }}"
           
           # Tag with all metadata tags
           while IFS= read -r tag; do
             echo "Tagging as: $tag"
             docker tag "$IMAGE_ID" "$tag"
           done <<< "${{ steps.meta.outputs.tags }}"
-
-      - name: Push image
-        if: github.event_name != 'pull_request'
-        run: |
+          
           # Push all tags
           while IFS= read -r tag; do
             echo "Pushing: $tag"
@@ -81,3 +106,49 @@ jobs:
         run: |
           echo "Image digest: ${{ steps.meta.outputs.digest }}"
           echo "Image tags: ${{ steps.meta.outputs.tags }}"
+
+  verify-nix:
+    runs-on: ubuntu-latest
+    needs: build
+    name: Verify Nix Availability
+
+    steps:
+      - name: Download Docker image artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-image
+
+      - name: Load Docker image
+        run: |
+          echo "Loading Docker image from artifact..."
+          docker load -i docker-image.tar
+          echo "✅ Docker image loaded"
+          
+          # List available images to confirm
+          docker images | grep git-actions-base
+
+      - name: Test Nix availability in container
+        run: |
+          echo "Testing if Nix is available inside the container..."
+          IMAGE_ID="${{ needs.build.outputs.image-name }}:${{ needs.build.outputs.image-tag }}"
+          
+          if docker run --rm "$IMAGE_ID" nix --version; then
+            echo "✅ Nix command is available in the container"
+          else
+            echo "❌ Nix command is NOT available in the container"
+            echo "Available commands in container:"
+            docker run --rm "$IMAGE_ID" ls /nix/store/ 2>/dev/null | head -10 || echo "No /nix/store found"
+            exit 1
+          fi
+
+      - name: Test Nix flakes functionality in container
+        run: |
+          echo "Testing Nix flakes support inside the container..."
+          IMAGE_ID="${{ needs.build.outputs.image-name }}:${{ needs.build.outputs.image-tag }}"
+          
+          if docker run --rm "$IMAGE_ID" nix run nixpkgs#cowsay -- "Nix flakes are working in container! 🐄"; then
+            echo "✅ Nix flakes functionality verified in container"
+          else
+            echo "❌ Nix flakes functionality failed in container"
+            exit 1
+          fi

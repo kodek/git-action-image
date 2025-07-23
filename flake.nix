@@ -87,6 +87,7 @@
 
         # Development Environment Tools
         devTools = with pkgs; [
+          nix # Nix package manager for flakes and package management
           direnv
           gh # GitHub CLI
         ];
@@ -134,6 +135,8 @@
               "PATH=${pkgs.lib.makeBinPath allTools}"
               "PYTHONPATH=${python}/lib/python3.13/site-packages"
               "NODE_PATH=${nodejs}/lib/node_modules"
+              # Enable Nix flakes functionality
+              "NIX_CONFIG=experimental-features = nix-command flakes"
             ];
 
             WorkingDir = "/workspace";
