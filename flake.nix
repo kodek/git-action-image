@@ -87,6 +87,7 @@
 
         # Development Environment Tools
         devTools = with pkgs; [
+          nix # Nix package manager for flakes and package management
           direnv
           gh # GitHub CLI
         ];
