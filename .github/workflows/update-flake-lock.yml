@@ -114,9 +114,9 @@ jobs:
           git add flake.lock
           git commit -m "chore: update flake.lock
 
-Weekly automatic update of flake.lock to latest package versions.
+          Weekly automatic update of flake.lock to latest package versions.
 
-All dependencies have been updated and the Docker image builds successfully."
+          All dependencies have been updated and the Docker image builds successfully."
 
       - name: Push branch
         if: steps.check_changes.outputs.changes == 'true' && env.build_success == 'true'
