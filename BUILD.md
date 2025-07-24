@@ -36,7 +36,7 @@ nix develop
 - **Build Tools**: go-task
 - **Code Quality**: ruff, basedpyright, eslint, golangci-lint, alejandra
 - **Security**: sops, age
-- **Development**: devenv, direnv, gh
+- **Development**: devenv, direnv, gh, openssh
 - **Utilities**: jq, yq-go, ripgrep
 
 ## Reproducible Builds
