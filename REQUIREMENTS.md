@@ -81,7 +81,7 @@ Environments may bring in older versions if needed, though they aren't strictly 
 
 - **Git** - Version control (universal)
 - **GitHub CLI (gh)** - GitHub API interactions
-- **OpenSSH** - SSH client for secure remote connections
+- **OpenSSH** - SSH client
 
 ## Data Processing & Utilities
 

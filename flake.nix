@@ -90,7 +90,7 @@
           nix # Nix package manager for flakes and package management
           direnv
           gh # GitHub CLI
-          openssh # SSH client for secure remote connections
+          openssh # SSH client
         ];
 
         # Data Processing & Utilities
