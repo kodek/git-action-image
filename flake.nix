@@ -117,13 +117,23 @@
             cue
           ];
 
+        nix-config = pkgs.writeTextFile {
+          name = "nix-config";
+          destination = "/etc/nix/nix.conf";
+          text = ''
+            experimental-features = nix-command flakes
+            build-users-group =
+          '';
+        };
+
         # Docker image using Nix best practices
         dockerImage = pkgs.dockerTools.buildLayeredImageWithNixDb {
           name = "git-actions-base";
           tag = "latest";
 
           contents =
-            allTools
+            [nix-config]
+            ++ allTools
             ++ (with pkgs.dockerTools; [
               usrBinEnv # Provides /usr/bin/env
               binSh # Provides /bin/sh
@@ -137,8 +147,6 @@
               "PATH=${pkgs.lib.makeBinPath allTools}"
               "PYTHONPATH=${python}/lib/python3.13/site-packages"
               "NODE_PATH=${nodejs}/lib/node_modules"
-              # Enable Nix flakes functionality
-              "NIX_CONFIG=experimental-features = nix-command flakes"
             ];
 
             WorkingDir = "/workspace";
