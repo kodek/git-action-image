@@ -10,6 +10,7 @@ permissions:
   contents: write
   pull-requests: write
   actions: write
+  workflows: write
 
 env:
   TARGET: .#docker
@@ -49,9 +50,10 @@ jobs:
 
       - name: 📝 Generate package diff
         run: |
-          { echo "### Packages changed";
+          { echo "## Packages changed";
             echo '```';
-            nix store diff-closures ./before ./after || true;
+            echo 'TODO: Add diff';
+            # nix store diff-closures ./before ./after || true;
             echo '```';
           } > /tmp/body.md
 
