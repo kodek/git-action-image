@@ -10,7 +10,6 @@ permissions:
   contents: write
   pull-requests: write
   actions: write
-  workflows: write
 
 env:
   TARGET: .#docker
@@ -70,8 +69,8 @@ jobs:
           add-paths: |
             flake.lock
 
-      - name: 🤖 Enable auto‑merge
-        if: ${{ steps.create-pr.outputs.pull-request-number }}
-        uses: peter-evans/enable-pull-request-automerge@v2
-        with:
-          pull-request-number: ${{ steps.create-pr.outputs.pull-request-number }}
+      # - name: 🤖 Enable auto‑merge
+      #   if: ${{ steps.create-pr.outputs.pull-request-number }}
+      #   uses: peter-evans/enable-pull-request-automerge@v2
+      #   with:
+      #     pull-request-number: ${{ steps.create-pr.outputs.pull-request-number }}
