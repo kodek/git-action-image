@@ -53,7 +53,7 @@ jobs:
             echo '```';
             nix store diff-closures ./before ./after || true;
             echo '```';
-          } > body.md
+          } > /tmp/body.md
 
       - name: 🚀 Create pull request
         id: create-pr
@@ -62,7 +62,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           branch: ci/update-flake
           title: "chore: update flake.lock"
-          body-path: body.md
+          body-path: /tmp/body.md
           delete-branch: true
           labels: dependencies,nix
 
