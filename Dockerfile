@@ -13,7 +13,7 @@
 # - Build Tools: go-task
 # - Code Quality: ruff, basedpyright, eslint, golangci-lint, alejandra
 # - Security: sops, age
-# - Development: devenv, direnv, gh (GitHub CLI)
+# - Development: devenv, direnv, gh (GitHub CLI), openssh
 # - Utilities: jq, yq-go, ripgrep
 
 # For development environment:
