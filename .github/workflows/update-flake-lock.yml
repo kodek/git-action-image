@@ -57,14 +57,16 @@ jobs:
 
       - name: 🚀 Create pull request
         id: create-pr
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           branch: ci/update-flake
           title: "chore: update flake.lock"
           body-path: /tmp/body.md
           delete-branch: true
-          labels: dependencies,nix
+          #labels: dependencies,nix
+          add-paths: |
+            flake.lock
 
       - name: 🤖 Enable auto‑merge
         if: ${{ steps.create-pr.outputs.pull-request-number }}
