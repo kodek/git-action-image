@@ -51,6 +51,19 @@ The image includes a pre-configured nixpkgs registry that pins to a specific rev
 
 The current pinned nixpkgs revision can be found in `/etc/nix/registry.json` inside the container.
 
+## Testing
+
+To verify the nixpkgs pinning functionality:
+
+```bash
+# Run the automated test suite
+./test-nixpkgs-pinning.sh
+
+# Manual verification
+docker run --rm git-actions-base:latest cat /etc/nix/registry.json
+docker run --rm git-actions-base:latest nix run nixpkgs#cowsay -- "Testing!"
+```
+
 ## Reproducible Builds
 
 The `flake.lock` file pins all dependencies for reproducible builds across environments.
