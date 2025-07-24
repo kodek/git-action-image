@@ -99,6 +99,23 @@
           ripgrep
         ];
 
+        # Get the current nixpkgs revision for pinning
+        nixpkgsRev = nixpkgs.rev or "unstable";
+
+        # Common packages pre-cached during image build
+        commonPackages = with pkgs; [
+          cowsay    # For testing
+          hello     # Classic test package
+          curl      # Network requests
+          wget      # Downloads
+          tree      # Directory listing
+          htop      # Process monitoring
+          vim       # Text editor
+          nano      # Simple text editor
+          less      # Pager
+          file      # File type detection
+        ];
+
         # All tools combined
         allTools =
           systemUtils
@@ -110,12 +127,40 @@
           ++ securityTools
           ++ devTools
           ++ dataTools
+          ++ commonPackages
           ++ [
             python
             nodejs
             go
             cue
           ];
+
+        # Create a script to set up the nixpkgs registry
+        nixpkgsRegistrySetup = pkgs.writeTextDir "etc/nix/registry.json" (builtins.toJSON {
+          version = 2;
+          flakes = [
+            {
+              from = {
+                type = "indirect";
+                id = "nixpkgs";
+              };
+              to = {
+                type = "github";
+                owner = "NixOS";
+                repo = "nixpkgs";
+                rev = nixpkgsRev;
+              };
+            }
+          ];
+        });
+
+        # Create Nix configuration file
+        nixConfig = pkgs.writeTextDir "etc/nix/nix.conf" ''
+          experimental-features = nix-command flakes
+          auto-optimise-store = true
+          warn-dirty = false
+          trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
+        '';
 
         # Docker image using Nix best practices
         dockerImage = pkgs.dockerTools.buildLayeredImage {
@@ -127,6 +172,8 @@
             binSh            # Provides /bin/sh
             caCertificates   # SSL certificates
             fakeNss          # /etc/passwd and /etc/group
+            nixpkgsRegistrySetup  # Pre-configured nixpkgs registry
+            nixConfig        # Nix configuration
           ]);
 
           config = {
@@ -135,7 +182,7 @@
               "PATH=${pkgs.lib.makeBinPath allTools}"
               "PYTHONPATH=${python}/lib/python3.13/site-packages"
               "NODE_PATH=${nodejs}/lib/node_modules"
-              # Enable Nix flakes functionality
+              # Enable Nix flakes functionality with registry support
               "NIX_CONFIG=experimental-features = nix-command flakes"
             ];
 
