@@ -118,7 +118,7 @@
           ];
 
         # Docker image using Nix best practices
-        dockerImage = pkgs.dockerTools.buildLayeredImage {
+        dockerImage = pkgs.dockerTools.buildLayeredImageWithNixDb {
           name = "git-actions-base";
           tag = "latest";
 
