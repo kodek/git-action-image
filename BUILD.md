@@ -38,6 +38,18 @@ nix develop
 - **Security**: sops, age
 - **Development**: devenv, direnv, gh
 - **Utilities**: jq, yq-go, ripgrep
+- **Pre-cached Packages**: cowsay, hello, curl, wget, tree, htop, vim, nano, less, file
+
+## Nixpkgs Pinning
+
+The image includes a pre-configured nixpkgs registry that pins to a specific revision. This ensures:
+
+- **Deterministic behavior**: All containers use the same nixpkgs packages
+- **Reduced GitHub API usage**: No need to fetch nixpkgs on every `nix run nixpkgs#package`
+- **Faster startup**: Common packages are pre-cached in the image
+- **Integration testing**: Packages are tested during image build
+
+The current pinned nixpkgs revision can be found in `/etc/nix/registry.json` inside the container.
 
 ## Reproducible Builds
 
