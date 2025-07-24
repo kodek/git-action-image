@@ -24,20 +24,20 @@
         # Core system utilities - use meta-packages and environment setup
         systemUtils = with pkgs; [
           # Essential system packages
-          coreutils     # ls, cat, cp, mv, mkdir, etc.
-          util-linux    # mount, umount, lsblk, etc.
-          findutils     # find, xargs
-          gnugrep       # grep
-          gnused        # sed
-          gawk          # awk
-          
+          coreutils # ls, cat, cp, mv, mkdir, etc.
+          util-linux # mount, umount, lsblk, etc.
+          findutils # find, xargs
+          gnugrep # grep
+          gnused # sed
+          gawk # awk
+
           # Network and compression
           curl
           wget
           unzip
           gnutar
           gzip
-          
+
           # Shells and version control
           bash
           zsh
@@ -122,12 +122,14 @@
           name = "git-actions-base";
           tag = "latest";
 
-          contents = allTools ++ (with pkgs.dockerTools; [
-            usrBinEnv        # Provides /usr/bin/env
-            binSh            # Provides /bin/sh
-            caCertificates   # SSL certificates
-            fakeNss          # /etc/passwd and /etc/group
-          ]);
+          contents =
+            allTools
+            ++ (with pkgs.dockerTools; [
+              usrBinEnv # Provides /usr/bin/env
+              binSh # Provides /bin/sh
+              caCertificates # SSL certificates
+              fakeNss # /etc/passwd and /etc/group
+            ]);
 
           config = {
             Env = [
