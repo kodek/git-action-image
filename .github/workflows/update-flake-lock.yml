@@ -12,7 +12,7 @@ permissions:
   actions: write
 
 env:
-  TARGET: .#foo-bar
+  TARGET: .#docker
 
 jobs:
   update-flake-lock:
