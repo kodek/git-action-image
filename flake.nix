@@ -63,6 +63,7 @@
         # Build & Task Management
         buildTools = with pkgs; [
           go-task # Modern task runner
+          bazelisk
         ];
 
         # Code Quality & Linting - Python
